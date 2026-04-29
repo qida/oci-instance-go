@@ -25,13 +25,15 @@ func main() {
 	}
 
 	log.Printf("Starting script with %v minutes delay.", t)
-	for true {
-		run()
-		time.Sleep(time.Duration(t) * time.Minute)
+	for range time.Tick(time.Duration(t) * time.Minute) {
+		if run() {
+			log.Println("Instance created successfully, exiting periodic task...")
+			break
+		}
 	}
 }
 
-func run() {
+func run() bool {
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -68,7 +70,7 @@ func run() {
 	existingInstances := checkExistingInstances(cfg, instances)
 	if existingInstances != "" {
 		log.Println(existingInstances)
-		return
+		return false
 	}
 
 	for _, domain := range cfg.AvailabilityDomains {
@@ -76,15 +78,17 @@ func run() {
 		resp, err := createInstance(coreClient, cfg, domain)
 		if err == nil {
 			handleSuccess(cfg)
-			return
+			return true
 		}
+		time.Sleep(time.Second * 5)
 		if !strings.Contains(err.Error(), "Out of host capacity") {
 			log.Println("Something went wrong: ", resp.HTTPResponse().Status)
-			return
+			return false
 		}
 		log.Println("Domain out of capacity: ", domain)
 	}
 	handleFailure(cfg)
+	return false
 }
 func ListAvailabilityDomains(client identity.IdentityClient, compartmentId string) ([]string, error) {
 	req := identity.ListAvailabilityDomainsRequest{CompartmentId: common.String(compartmentId)}
