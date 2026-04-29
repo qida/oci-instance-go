@@ -13,7 +13,6 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
+*.pem
 .env
 oci-instance-go
-oci-instance-go.exe

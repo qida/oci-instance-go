@@ -75,7 +75,7 @@ func run() {
 		log.Println("Trying domain: ", domain)
 		resp, err := createInstance(coreClient, cfg, domain)
 		if err == nil {
-			handleSuccess()
+			handleSuccess(cfg)
 			return
 		}
 		if !strings.Contains(err.Error(), "Out of host capacity") {
@@ -84,6 +84,7 @@ func run() {
 		}
 		log.Println("Domain out of capacity: ", domain)
 	}
+	handleFailure(cfg)
 }
 func ListAvailabilityDomains(client identity.IdentityClient, compartmentId string) ([]string, error) {
 	req := identity.ListAvailabilityDomainsRequest{CompartmentId: common.String(compartmentId)}
@@ -174,6 +175,16 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 	return client.LaunchInstance(context.Background(), req)
 }
 
-func handleSuccess() {
+func handleSuccess(cfg config) {
 	log.Println("Instance created")
+
+	if err := sendNTFYNotification(cfg, true); err != nil {
+		log.Printf("Failed to send NTFY notification: %v", err)
+	}
+}
+func handleFailure(cfg config) {
+	log.Println("Failed to create instance")
+	if err := sendNTFYNotification(cfg, false); err != nil {
+		log.Printf("Failed to send NTFY notification: %v", err)
+	}
 }

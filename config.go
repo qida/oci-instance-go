@@ -31,6 +31,13 @@ type config struct {
 	AvailabilityDomains []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`
 	BootVolumeSizeInGbs int64    `env:"OCI_BOOT_VOLUME_SIZE_IN_GBS"`
 	BootVolumeId        string   `env:"OCI_BOOT_VOLUME_ID"`
+
+	// NTFY Notification
+	NTFYEnabled  bool   `env:"NTFY_ENABLED" envDefault:"false"`
+	NTFYServer   string `env:"NTFY_SERVER" envDefault:"https://ntfy.sh"`
+	NTFYTopic    string `env:"NTFY_TOPIC"`
+	NTFYToken    string `env:"NTFY_TOKEN"`
+	NTFYPriority int    `env:"NTFY_PRIORITY" envDefault:"3"`
 }
 
 func (cfg config) validate() error {
