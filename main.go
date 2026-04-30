@@ -10,7 +10,6 @@ import (
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
-	"github.com/oracle/oci-go-sdk/v65/example/helpers"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 )
 
@@ -36,37 +35,47 @@ func main() {
 func run() bool {
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error loading config: %v", err)
+		return false
 	}
 
-	cfg.validate()
+	err = cfg.validate()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error validating config: %v", err)
+		return false
 	}
 
 	cp, err := cfg.buildConfigProvider()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error building config provider: %v", err)
+		return false
 	}
 
 	coreClient, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error creating compute client: %v", err)
+		return false
 	}
 
 	identityClient, err := identity.NewIdentityClientWithConfigurationProvider(cp)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error creating identity client: %v", err)
+		return false
 	}
 
 	if len(cfg.AvailabilityDomains) == 0 {
 		cfg.AvailabilityDomains, err = ListAvailabilityDomains(identityClient, cfg.TenancyID)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("Error listing availability domains: %v", err)
+			return false
 		}
 	}
 
-	instances := ListInstances(coreClient, cfg.TenancyID)
+	instances, err := ListInstances(coreClient, cfg.TenancyID)
+	if err != nil {
+		log.Printf("Error listing instances: %v", err)
+		return false
+	}
 	existingInstances := checkExistingInstances(cfg, instances)
 	if existingInstances != "" {
 		log.Println(existingInstances)
@@ -94,7 +103,9 @@ func ListAvailabilityDomains(client identity.IdentityClient, compartmentId strin
 	req := identity.ListAvailabilityDomainsRequest{CompartmentId: common.String(compartmentId)}
 
 	resp, err := client.ListAvailabilityDomains(context.Background(), req)
-	helpers.FatalIfError(err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list availability domains: %w", err)
+	}
 
 	var domainNames []string
 	for _, item := range resp.Items {
@@ -103,19 +114,19 @@ func ListAvailabilityDomains(client identity.IdentityClient, compartmentId strin
 	return domainNames, nil
 }
 
-func ListInstances(client core.ComputeClient, compartmentId string) []core.Instance {
+func ListInstances(client core.ComputeClient, compartmentId string) ([]core.Instance, error) {
 	req := core.ListInstancesRequest{Page: common.String(""),
 		Limit:         common.Int(78),
 		SortBy:        core.ListInstancesSortByTimecreated,
 		SortOrder:     core.ListInstancesSortOrderAsc,
 		CompartmentId: common.String(compartmentId)}
 
-	// Send the request using the service client
 	resp, err := client.ListInstances(context.Background(), req)
-	helpers.FatalIfError(err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list instances: %w", err)
+	}
 
-	// Retrieve value from the response.
-	return resp.Items
+	return resp.Items, nil
 }
 
 func checkExistingInstances(cfg config, instances []core.Instance) string {
