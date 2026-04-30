@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -29,6 +30,8 @@ func main() {
 			log.Println("Instance created successfully, exiting periodic task...")
 			break
 		}
+		//加入随机延时，避免对系统资源造成过大压力
+		time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
 	}
 }
 
@@ -89,7 +92,8 @@ func run() bool {
 			handleSuccess(cfg)
 			return true
 		}
-		time.Sleep(time.Second * 5)
+		//加入随机延时，避免对系统资源造成过大压力
+		time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
 		if !strings.Contains(err.Error(), "Out of host capacity") {
 			log.Println("Something went wrong: ", resp.HTTPResponse().Status)
 			return false
