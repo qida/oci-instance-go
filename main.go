@@ -92,10 +92,15 @@ func run() bool {
 			handleSuccess(cfg)
 			return true
 		}
-		//加入随机延时，避免对系统资源造成过大压力
+
 		time.Sleep(time.Duration(rand.Intn(30)) * time.Second)
+
 		if !strings.Contains(err.Error(), "Out of host capacity") {
-			log.Println("Something went wrong: ", resp.HTTPResponse().Status)
+			if resp.HTTPResponse() != nil {
+				log.Printf("Something went wrong in domain %s: %s", domain, resp.HTTPResponse().Status)
+			} else {
+				log.Printf("Error creating instance in domain %s: %v", domain, err)
+			}
 			return false
 		}
 		log.Println("Domain out of capacity: ", domain)
