@@ -58,9 +58,6 @@ func (cfg config) buildConfigProvider() (common.ConfigurationProvider, error) {
 	}
 
 	cp := common.NewRawConfigurationProvider(cfg.TenancyID, cfg.UserID, cfg.Region, cfg.KeyFingerprint, string(pk), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	ok, err := common.IsConfigurationProviderValid(cp)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"strings"
@@ -18,6 +19,16 @@ func main() {
 	var t int
 	flag.IntVar(&t, "t", 10, "Number of minutes between retries")
 	flag.Parse()
+
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Printf("Error loading config: %v", err)
+		return
+	}
+
+	notifyStatus(cfg, fmt.Sprintf("**脚本启动**\n\n**重试间隔**: %d 分钟\n**区域**: %s\n**规格**: %s\n**OCPUs**: %.1f\n**内存**: %.1f GB",
+		t, cfg.Region, cfg.Shape, cfg.OCPUS, cfg.MemoryInGbs))
+
 	if run() {
 		log.Println("Instance created successfully, exiting periodic task...")
 		return
@@ -83,14 +94,16 @@ func run() bool {
 	existingInstances := checkExistingInstances(cfg, instances)
 	if existingInstances != "" {
 		log.Println(existingInstances)
+		notifyStatus(cfg, existingInstances)
 		return false
 	}
 
 	for _, domain := range cfg.AvailabilityDomains {
 		log.Println("Trying domain: ", domain)
+		notifyStatus(cfg, fmt.Sprintf("正在尝试可用域: %s", domain))
 		resp, err := createInstance(coreClient, cfg, domain)
 		if err == nil {
-			handleSuccess(cfg)
+			handleSuccess(cfg, domain)
 			return true
 		}
 
@@ -98,13 +111,22 @@ func run() bool {
 
 		if !strings.Contains(err.Error(), "Out of host capacity") {
 			if resp.HTTPResponse() != nil {
-				log.Printf("Something went wrong in domain %s: %s", domain, resp.HTTPResponse().Status)
+				body, _ := io.ReadAll(resp.HTTPResponse().Body)
+				log.Printf("Something went wrong in domain %s: %s, Body: %s, Error: %v", domain, resp.HTTPResponse().Status, string(body), err)
+				notifyError(cfg, domain, fmt.Sprintf("%s: %s", resp.HTTPResponse().Status, err.Error()))
 			} else {
 				log.Printf("Error creating instance in domain %s: %v", domain, err)
+				notifyError(cfg, domain, err.Error())
+			}
+			// LimitExceeded 是配额问题，重试无意义，直接退出
+			if strings.Contains(err.Error(), "LimitExceeded") {
+				notifyFatal(cfg, "服务配额超限 (LimitExceeded)，请检查 OCI 账户配额和现有实例。程序退出。")
+				log.Fatal("Service limit exceeded. Please check your OCI tenancy quotas and existing instances. Exiting.")
 			}
 			return false
 		}
 		log.Println("Domain out of capacity: ", domain)
+		notifyStatus(cfg, fmt.Sprintf("可用域 %s 容量不足，尝试下一个...", domain))
 	}
 	handleFailure(cfg)
 	return false
@@ -177,7 +199,7 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 				PluginsConfig: []core.InstanceAgentPluginConfigDetails{
 					{
 						Name:         common.String("Compute Instance Monitoring"),
-						DesiredState: "ENABLED",
+						DesiredState: core.InstanceAgentPluginConfigDetailsDesiredStateEnabled,
 					},
 				},
 				IsMonitoringDisabled: common.Bool(false),
@@ -200,16 +222,12 @@ func createInstance(client core.ComputeClient, cfg config, domain string) (core.
 	return client.LaunchInstance(context.Background(), req)
 }
 
-func handleSuccess(cfg config) {
+func handleSuccess(cfg config, domain string) {
 	log.Println("Instance created")
-
-	if err := sendNTFYNotification(cfg, true); err != nil {
-		log.Printf("Failed to send NTFY notification: %v", err)
-	}
+	notifySuccess(cfg, domain)
 }
+
 func handleFailure(cfg config) {
 	log.Println("Failed to create instance")
-	if err := sendNTFYNotification(cfg, false); err != nil {
-		log.Printf("Failed to send NTFY notification: %v", err)
-	}
+	notifyFailure(cfg)
 }
