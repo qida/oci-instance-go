@@ -16,14 +16,15 @@ import (
 
 func main() {
 	var t int
-	flag.IntVar(&t, "t", 0, "Number of minutes between retries")
+	flag.IntVar(&t, "t", 10, "Number of minutes between retries")
 	flag.Parse()
-
-	if t == 0 {
-		run()
+	if run() {
+		log.Println("Instance created successfully, exiting periodic task...")
 		return
 	}
-
+	if t == 0 {
+		return
+	}
 	log.Printf("Starting script with %v minutes delay.", t)
 	for range time.Tick(time.Duration(t) * time.Minute) {
 		if run() {
