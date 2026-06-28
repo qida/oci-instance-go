@@ -121,9 +121,10 @@ func run() bool {
 			// LimitExceeded 是配额问题，重试无意义，直接退出
 			if strings.Contains(err.Error(), "LimitExceeded") {
 				notifyFatal(cfg, "服务配额超限 (LimitExceeded)，请检查 OCI 账户配额和现有实例。程序退出。")
-				log.Fatal("Service limit exceeded. Please check your OCI tenancy quotas and existing instances. Exiting.")
+				// log.Fatal("Service limit exceeded. Please check your OCI tenancy quotas and existing instances. Exiting.")
 			}
-			return false
+			// return false
+			continue
 		}
 		log.Println("Domain out of capacity: ", domain)
 		notifyStatus(cfg, fmt.Sprintf("可用域 %s 容量不足，尝试下一个...", domain))
