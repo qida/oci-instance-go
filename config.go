@@ -26,6 +26,7 @@ type config struct {
 	Shape              string  `env:"OCI_SHAPE"`
 	MaxInstances       int     `env:"OCI_MAX_INSTANCES" envDefault:"1"`
 	SSHPublicKey       string  `env:"OCI_SSH_PUBLIC_KEY"`
+	InstanceName       string  `env:"OCI_INSTANCE_NAME" envDefault:"instance"`
 
 	// Optional
 	AvailabilityDomains []string `env:"OCI_AVAILABILITY_DOMAIN" envSeparator:","`

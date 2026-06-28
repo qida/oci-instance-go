@@ -185,10 +185,11 @@ func checkExistingInstances(cfg config, instances []core.Instance) string {
 func createInstance(client core.ComputeClient, cfg config, domain string) (core.LaunchInstanceResponse, error) {
 	req := core.LaunchInstanceRequest{
 		LaunchInstanceDetails: core.LaunchInstanceDetails{
-			Metadata:           map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
-			Shape:              &cfg.Shape,
-			CompartmentId:      &cfg.TenancyID,
-			DisplayName:        common.String("instance-" + time.Now().Format("20060102-1504")),
+			Metadata:      map[string]string{"ssh_authorized_keys": cfg.SSHPublicKey},
+			Shape:         &cfg.Shape,
+			CompartmentId: &cfg.TenancyID,
+			// DisplayName:        common.String(cfg.InstanceName + "-" + time.Now().Format("20060102-1504")),
+			DisplayName:        common.String(cfg.InstanceName),
 			AvailabilityDomain: &domain,
 			SourceDetails:      buildSourceDetails(cfg),
 			CreateVnicDetails: &core.CreateVnicDetails{
